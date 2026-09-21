@@ -63,6 +63,17 @@ function requireAdmin(req, res, next) {
 const app = express();
 app.use(express.json({ limit: "10kb" }));
 
+const path = require('path');
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+
 // Public: customer page
 app.use(express.static(path.join(__dirname, "public")));
 
