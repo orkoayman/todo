@@ -49,10 +49,12 @@ function requireAdmin(req, res, next) {
   if (scheme === "Basic" && encoded) {
     const decoded = Buffer.from(encoded, "base64").toString();
     const i = decoded.indexOf(":");
-    const user = decoded.slice(0, i);
-    const pass = decoded.slice(i + 1);
-    if (i >= 0 && safeEqual(user, ADMIN_USER) && safeEqual(pass, ADMIN_PASSWORD)) {
-      return next();
+    if (i >= 0) {
+      const user = decoded.slice(0, i);
+      const pass = decoded.slice(i + 1);
+      if (safeEqual(user, ADMIN_USER) && safeEqual(pass, ADMIN_PASSWORD)) {
+        return next();
+      }
     }
   }
   res.set("WWW-Authenticate", 'Basic realm="Admin"');
@@ -63,19 +65,11 @@ function requireAdmin(req, res, next) {
 const app = express();
 app.use(express.json({ limit: "10kb" }));
 
-const path = require('path');
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
-});
-
-
 // Public: customer page
-app.use(express.static(path.join(__dirname, "public")));
+// (express.static ইচ্ছাকৃতভাবে ব্যবহার করা হয়নি, যাতে server.js ও data.db খোলা না থাকে)
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
 // Public: customer submits name + location (or manual address)
 app.post("/api/customers", (req, res) => {
@@ -84,6 +78,7 @@ app.post("/api/customers", (req, res) => {
   if (consent !== true) {
     return res.status(400).json({ error: "সম্মতি ছাড়া তথ্য সংরক্ষণ করা যায় না।" });
   }
+
   const cleanName = typeof name === "string" ? name.trim() : "";
   if (cleanName.length < 1 || cleanName.length > 100) {
     return res.status(400).json({ error: "নাম ১ থেকে ১০০ অক্ষরের মধ্যে দিন।" });
@@ -95,6 +90,7 @@ app.post("/api/customers", (req, res) => {
       return res.status(400).json({ error: "লোকেশন সঠিক নয়।" });
     }
   }
+
   const cleanAddress = typeof address === "string" ? address.trim().slice(0, 300) : "";
   if (!hasCoords && !cleanAddress) {
     return res.status(400).json({ error: "লোকেশন অথবা ঠিকানা দিন।" });
@@ -111,9 +107,9 @@ app.post("/api/customers", (req, res) => {
   res.status(201).json({ ok: true });
 });
 
-// Admin only
+// Admin only (username/password লাগবে)
 app.get("/admin", requireAdmin, (req, res) => {
-  res.sendFile(path.join(__dirname, "private", "admin.html"));
+  res.sendFile(path.join(__dirname, "admin.html"));
 });
 
 app.get("/api/admin/customers", requireAdmin, (req, res) => {
